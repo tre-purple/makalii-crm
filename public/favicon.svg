@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Navy background with rounded corners -->
+  <rect width="32" height="32" rx="6" fill="#1B2A4A"/>
+  <!-- Vertical lines (sand #B5A48A) -->
+  <line x1="7"  y1="5" x2="7"  y2="27" stroke="#B5A48A" stroke-width="1.4"/>
+  <line x1="11" y1="5" x2="11" y2="27" stroke="#B5A48A" stroke-width="1.4"/>
+  <line x1="16" y1="5" x2="16" y2="27" stroke="#B5A48A" stroke-width="1.4"/>
+  <line x1="21" y1="5" x2="21" y2="27" stroke="#B5A48A" stroke-width="1.4"/>
+  <line x1="25" y1="5" x2="25" y2="27" stroke="#B5A48A" stroke-width="1.4"/>
+  <!-- Dots (white) at staggered heights -->
+  <circle cx="7"  cy="11" r="2.2" fill="#FFFFFF"/>
+  <circle cx="11" cy="18" r="2.2" fill="#FFFFFF"/>
+  <circle cx="16" cy="9"  r="2.2" fill="#FFFFFF"/>
+  <circle cx="21" cy="21" r="2.2" fill="#FFFFFF"/>
+  <circle cx="25" cy="14" r="2.2" fill="#FFFFFF"/>
+</svg>

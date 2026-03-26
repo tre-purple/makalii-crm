@@ -1,0 +1,51 @@
+export const BRAND = {
+  navy:      "#1B2A4A",
+  navyMid:   "#2D3F61",
+  navyLight: "#E8EBF2",
+  sand:      "#B5A48A",
+  sandLight: "#F2EDE4",
+  sandMid:   "#D6C9B2",
+  black:     "#111111",
+  gray:      "#6B6B6B",
+  grayLight: "#F4F2EE",
+  border:    "#DDD8CF",
+  white:     "#FFFFFF",
+  green:     "#3B6B3E",
+  greenLight:"#E6F0E6",
+  red:       "#8B2E2E",
+  redLight:  "#F5E8E8",
+  amber:     "#8B6914",
+  amberLight:"#FBF3E0",
+};
+
+export const STAGES = ["Lead","Contacted","Meeting Set","Proposal Sent","Negotiating","Closed Won","Closed Lost"];
+
+export const STAGE_COLORS = {
+  "Lead":         BRAND.gray,
+  "Contacted":    BRAND.navy,
+  "Meeting Set":  BRAND.green,
+  "Proposal Sent":BRAND.amber,
+  "Negotiating":  BRAND.sand,
+  "Closed Won":   BRAND.green,
+  "Closed Lost":  BRAND.red,
+};
+
+export const STAGE_BG = {
+  "Lead":         BRAND.grayLight,
+  "Contacted":    BRAND.navyLight,
+  "Meeting Set":  BRAND.greenLight,
+  "Proposal Sent":BRAND.amberLight,
+  "Negotiating":  BRAND.sandLight,
+  "Closed Won":   BRAND.greenLight,
+  "Closed Lost":  BRAND.redLight,
+};
+
+export const SEGMENTS = [
+  "Soil Testing Inquiry","Government/Policy","Nonprofit/Community",
+  "Research/Academic","Volunteer/Intern","Partnership","Data/Tech",
+];
+
+export const TIER_COLORS = { "Hot":BRAND.navy, "Warm":BRAND.sand, "Cold":BRAND.gray };
+export const TIER_BG     = { "Hot":BRAND.navyLight, "Warm":BRAND.sandLight, "Cold":BRAND.grayLight };
+
+export const ISLANDS = ["Oʻahu","Hawaiʻi Island","Maui","Kauaʻi","Molokaʻi","Lānaʻi","Statewide","Mainland"];

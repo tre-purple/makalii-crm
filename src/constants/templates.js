@@ -1,0 +1,30 @@
+export const EMAIL_TEMPLATES = {
+  "Soil Testing Inquiry": {
+    subject: (c) => `Re: Your Soil Testing Inquiry — Makaliʻi Metrics`,
+    body: (c) => `Aloha ${c.firstName},\n\nMahalo for reaching out to Makaliʻi Metrics! We'd love to help you understand your soil.\n\n${c.notes?.includes("element") ? "Your detailed element panel request is exactly the kind of work we specialize in. We can run a comprehensive multi-element analysis including pH and ECe salinity testing, and provide Hawaii-specific interpretation and renovation recommendations.\n\n" : ""}To get started, here's what the process looks like:\n1. We'll send you a sample collection kit with instructions\n2. You ship or drop off your samples at our lab\n3. We process and return results with actionable interpretation — typically within a few days\n\nI'd love to schedule a quick 15-minute call to confirm the right test package for your needs. Would you be available this week?\n\nMahalo nui,\nDaniel Richardson\nMakaliʻi Metrics\n(808) 391-3975 | dtr@hawaii.edu\nmakaliimetrics.com`,
+  },
+  "Government/Policy": {
+    subject: (c) => `Following Up — Makaliʻi Metrics Soil Lab`,
+    body: (c) => `Aloha ${c.firstName},\n\nMahalo for your time and continued interest in Makaliʻi Metrics.\n\nAs Hawaiʻi's only locally-staffed commercial soil testing lab, we provide Hawaii-specific interpretation that mainland labs cannot replicate — with turnaround in days, not weeks.\n\nA few ways we can support your constituents:\n• Soil testing for NRCS/EQIP program farmers\n• Baseline testing for Carbon Smart and climate-smart grant recipients\n• Support for county and state agricultural development initiatives\n\n${c.notes?.includes("site visit") ? "We're excited about the possibility of a site visit and will follow up to confirm a date.\n\n" : ""}I'd love to explore how we can be a resource for the agricultural communities you serve.\n\nMahalo nui,\nDaniel Richardson\nMakaliʻi Metrics\n(808) 391-3975 | dtr@hawaii.edu\nmakaliimetrics.com`,
+  },
+  "Nonprofit/Community": {
+    subject: (c) => `Aloha from Makaliʻi Metrics — Let's Connect`,
+    body: (c) => `Aloha ${c.firstName},\n\nMahalo for reaching out — your work sounds deeply aligned with our mission of aloha ʻāina and data-driven land stewardship.\n\n${c.notes?.includes("microbial") || c.message?.includes("microbial") ? "To answer your question directly: yes, we do offer microbial activity and organic matter testing alongside standard elemental panels.\n\n" : ""}${c.notes?.includes("restoration") ? "Your restoration project sounds like a powerful opportunity to document soil recovery over time — something we'd love to support with baseline and monitoring samples.\n\n" : ""}Would you be open to a short call or Zoom to explore how we might work together?\n\nMahalo nui,\nDaniel Richardson\nMakaliʻi Metrics\n(808) 391-3975 | dtr@hawaii.edu`,
+  },
+  "Research/Academic": {
+    subject: (c) => `Re: Makaliʻi Metrics — Academic Services`,
+    body: (c) => `Aloha ${c.firstName},\n\nMahalo for your interest in working with Makaliʻi Metrics!\n\n${c.message?.includes("W-9") ? "I've attached our W-9 to this email for your records. Please share it with your department to complete vendor onboarding.\n\n" : ""}We use protocols aligned with the Hawaiʻi Soil Health Test established by the Crow Lab at CTAHR, and provide data in formats compatible with standard research workflows.\n\nFor faculty submissions, we offer:\n• Standard and comprehensive soil health panels\n• Carbon fractionation and organic matter analysis\n• Hawaii-specific interpretation and reporting\n• Volume pricing for research programs\n\nMahalo nui,\nDaniel Richardson\nMakaliʻi Metrics\n(808) 391-3975 | dtr@hawaii.edu`,
+  },
+  "Partnership": {
+    subject: (c) => `Partnership Opportunity — Makaliʻi Metrics`,
+    body: (c) => `Aloha ${c.firstName},\n\nMahalo for connecting — we're excited about the potential to collaborate.\n\nMakaliʻi Metrics is Hawaiʻi's first locally-staffed commercial soil lab, actively building partnerships with organizations that share our commitment to food sovereignty and data-driven agriculture.\n\n${c.org?.includes("SBDC") ? "I'd love to hear more about the client you mentioned. Best to reach me directly at (808) 391-3975 or dtr@hawaii.edu.\n\n" : ""}${c.org?.includes("GoFarm") ? "A GoFarm x Makaliʻi Metrics collaboration could be a powerful way to integrate soil health education into farmer training statewide.\n\n" : ""}Could we schedule a call in the coming weeks?\n\nMahalo nui,\nDaniel Richardson\nMakaliʻi Metrics\n(808) 391-3975 | dtr@hawaii.edu`,
+  },
+  "Volunteer/Intern": {
+    subject: (c) => `Mahalo for Your Interest — Makaliʻi Metrics`,
+    body: (c) => `Aloha ${c.firstName},\n\nMahalo for your message and your interest in contributing to what we're building at Makaliʻi Metrics.\n\nWe're a small but growing team and are always looking for ways to bring dedicated people into our mission. While we don't have a formal program posted right now, we'd love to stay in touch as we grow.\n\n${c.notes?.includes("software") ? "Your software engineering background is genuinely interesting to us — there's meaningful work at the intersection of soil data and technology.\n\n" : ""}Keep an eye on makaliimetrics.com for updates, and don't hesitate to reach out directly.\n\nMahalo nui,\nDaniel Richardson\nMakaliʻi Metrics\ndtr@hawaii.edu`,
+  },
+  "Data/Tech": {
+    subject: (c) => `Re: Data & Stewardship — Makaliʻi Metrics`,
+    body: (c) => `Aloha ${c.firstName},\n\nMahalo for reaching out — the questions you're raising around data stewardship are ones we think about deeply as well.\n\nAt Makaliʻi Metrics, we believe the communities stewarding the ʻāina should also steward the data generated from it. We're committed to data sovereignty principles and happy to discuss how we handle soil monitoring data with our partners.\n\nI'd welcome a call or Zoom to discuss your specific project needs. Would you be available in the next couple of weeks?\n\nMahalo nui,\nDaniel Richardson\nMakaliʻi Metrics\n(808) 391-3975 | dtr@hawaii.edu`,
+  },
+};
