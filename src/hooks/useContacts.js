@@ -10,16 +10,29 @@ export function useContacts() {
     let cancelled = false;
 
     async function init() {
-      const { data } = await supabase.from("contacts").select("*").order("id");
+      const { data, error } = await supabase.from("contacts").select("*").order("id");
       if (cancelled) return;
 
-      if (data?.length === 0) {
-        // First run — seed from local constants
-        await supabase.from("contacts").insert(initContacts);
-        const { data: seeded } = await supabase.from("contacts").select("*").order("id");
+      if (error) {
+        console.error("[useContacts] fetch failed:", error.message);
+        setLoading(false);
+        return;
+      }
+
+      if (data.length === 0) {
+        console.log("[useContacts] empty table — seeding", initContacts.length, "contacts…");
+        const rows = initContacts.map(({ id: _id, ...rest }) => rest);
+        const { error: seedErr } = await supabase.from("contacts").insert(rows);
+        if (seedErr) {
+          console.error("[useContacts] seed failed:", seedErr.message);
+          setLoading(false);
+          return;
+        }
+        const { data: seeded, error: refetchErr } = await supabase.from("contacts").select("*").order("id");
+        if (refetchErr) console.error("[useContacts] refetch after seed:", refetchErr.message);
         if (!cancelled) setContacts(seeded ?? initContacts);
       } else {
-        setContacts(data ?? []);
+        setContacts(data);
       }
       setLoading(false);
     }
@@ -43,7 +56,8 @@ export function useContacts() {
   }, []);
 
   async function addContact(contact) {
-    const { error } = await supabase.from("contacts").insert(contact);
+    const { id: _id, ...row } = contact;
+    const { error } = await supabase.from("contacts").insert(row);
     if (error) console.error("addContact:", error.message);
   }
 
@@ -58,7 +72,8 @@ export function useContacts() {
   }
 
   async function importContacts(newContacts) {
-    const { error } = await supabase.from("contacts").insert(newContacts);
+    const rows = newContacts.map(({ id: _id, ...rest }) => rest);
+    const { error } = await supabase.from("contacts").insert(rows);
     if (error) console.error("importContacts:", error.message);
   }
 
