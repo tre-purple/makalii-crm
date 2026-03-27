@@ -18,7 +18,15 @@ export default function AnalyticsView({ contacts, onSelectContact, generateEmail
     .map(([t, color, bg]) => ({ t, color, bg, count: contacts.filter(c => c.tier === t).length }));
 
   const actionableC = contacts.filter(c => c.tags?.includes("Actionable"));
-  const totalVal = contacts.reduce((s, c) => s + c.value, 0);
+
+  const contractContacts = contacts.filter(c => c.revenueType === "Contract Project");
+  const mailInContacts   = contacts.filter(c => c.revenueType === "Mail-In Testing");
+  const untypedContacts  = contacts.filter(c => !c.revenueType);
+
+  const contractTotal = contractContacts.reduce((s, c) => s + (c.contractValue || 0), 0);
+  const mailInTotal   = mailInContacts.reduce((s, c) => s + (c.value || 0), 0);
+  const untypedTotal  = untypedContacts.reduce((s, c) => s + (c.value || 0), 0);
+  const totalVal      = contractTotal + mailInTotal + untypedTotal;
 
   return (
     <div style={{flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:12}}>
@@ -78,6 +86,29 @@ export default function AnalyticsView({ contacts, onSelectContact, generateEmail
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Revenue type breakdown */}
+      <div style={{...card}}>
+        <div style={{fontWeight:500, fontSize:14, color:BRAND.navy, marginBottom:12}}>Pipeline by revenue type</div>
+        <div style={{display:"flex", gap:10, flexWrap:"wrap"}}>
+          {[
+            ["Contract Project", contractContacts.length, contractTotal, BRAND.navy,  BRAND.navyLight],
+            ["Mail-In Testing",  mailInContacts.length,  mailInTotal,   BRAND.green,  BRAND.greenLight],
+            ["Untyped",          untypedContacts.length, untypedTotal,  BRAND.gray,   BRAND.grayLight],
+          ].map(([lbl, count, total, color, bg]) => (
+            <div key={lbl} style={{flex:1, minWidth:140, display:"flex", justifyContent:"space-between", alignItems:"center", padding:"11px 14px", borderRadius:8, background:bg, border:`1px solid ${color}22`}}>
+              <div>
+                <div style={{fontSize:12, fontWeight:500, color}}>{lbl}</div>
+                <div style={{fontSize:11, color:BRAND.gray, marginTop:2}}>{count} contact{count !== 1 ? "s" : ""}</div>
+              </div>
+              <div style={{fontSize:18, fontWeight:500, color}}>{total > 0 ? fmt$(total) : "—"}</div>
+            </div>
+          ))}
+        </div>
+        {contractContacts.length === 0 && mailInContacts.length === 0 && (
+          <div style={{fontSize:12, color:BRAND.gray, marginTop:10}}>No revenue types assigned yet — set one in each contact's detail panel.</div>
+        )}
       </div>
 
       <div style={card}>

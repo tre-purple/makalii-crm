@@ -49,3 +49,21 @@ export const TIER_COLORS = { "Hot":BRAND.navy, "Warm":BRAND.sand, "Cold":BRAND.g
 export const TIER_BG     = { "Hot":BRAND.navyLight, "Warm":BRAND.sandLight, "Cold":BRAND.grayLight };
 
 export const ISLANDS = ["Oʻahu","Hawaiʻi Island","Maui","Kauaʻi","Molokaʻi","Lānaʻi","Statewide","Mainland"];
+
+export const REVENUE_TYPES = ["Contract Project", "Mail-In Testing"];
+
+export const QUOTE_STATUSES = ["No Quote Sent","Quote Drafted","Quote Sent","Quote Accepted","Quote Declined"];
+export const QUOTE_STATUS_COLORS = {
+  "No Quote Sent":  BRAND.gray,
+  "Quote Drafted":  BRAND.amber,
+  "Quote Sent":     BRAND.navy,
+  "Quote Accepted": BRAND.green,
+  "Quote Declined": BRAND.red,
+};
+export const QUOTE_STATUS_BG = {
+  "No Quote Sent":  BRAND.grayLight,
+  "Quote Drafted":  BRAND.amberLight,
+  "Quote Sent":     BRAND.navyLight,
+  "Quote Accepted": BRAND.greenLight,
+  "Quote Declined": BRAND.redLight,
+};

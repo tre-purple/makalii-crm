@@ -25,11 +25,13 @@ export default function AddModal({ onSave, onClose }) {
 
   return (
     <div
-      style={{position:"absolute", top:0, left:0, right:0, bottom:0, minHeight:"100%", background:"rgba(15,20,35,0.6)", display:"flex", alignItems:"flex-start", justifyContent:"center", zIndex:99, padding:"32px 16px"}}
+      style={{position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(15,20,35,0.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:99, padding:"32px 16px"}}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{width:480, maxWidth:"100%", background:BRAND.white, border:`1px solid ${BRAND.border}`, borderRadius:12, padding:"22px 24px", boxShadow:"0 12px 48px rgba(0,0,0,0.2)"}}>
-        <div style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6}}>
+      <div style={{width:480, maxWidth:"100%", background:BRAND.white, border:`1px solid ${BRAND.border}`, borderRadius:12, padding:"22px 24px 0", boxShadow:"0 12px 48px rgba(0,0,0,0.2)", display:"flex", flexDirection:"column", height:"calc(100vh - 64px)", maxHeight:680}}>
+
+        {/* Fixed header */}
+        <div style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6, flexShrink:0}}>
           <div>
             <div style={{fontWeight:500, fontSize:16, color:BRAND.navy}}>Add new contact</div>
             <div style={{fontSize:12, color:BRAND.gray, marginTop:3}}>Step {addStep} of 3 — {["Contact info","Classification","Message & notes"][addStep-1]}</div>
@@ -37,10 +39,12 @@ export default function AddModal({ onSave, onClose }) {
           <button onClick={onClose} style={{...btnSecondary, padding:"4px 10px", fontSize:12}}>✕</button>
         </div>
 
-        <div style={{height:3, borderRadius:99, background:BRAND.sandLight, margin:"14px 0 20px", overflow:"hidden"}}>
+        <div style={{height:3, borderRadius:99, background:BRAND.sandLight, margin:"14px 0 20px", overflow:"hidden", flexShrink:0}}>
           <div style={{height:"100%", borderRadius:99, background:BRAND.navy, width:(addStep/3*100)+"%", transition:"width 0.25s"}}/>
         </div>
 
+        {/* Scrollable step content */}
+        <div style={{flex:1, overflowY:"auto", minHeight:0, paddingBottom:4}}>
         {addStep === 1 && (
           <div>
             <div style={{display:"flex", gap:12, marginBottom:14}}>
@@ -150,7 +154,10 @@ export default function AddModal({ onSave, onClose }) {
           </div>
         )}
 
-        <div style={{display:"flex", gap:8, marginTop:20}}>
+        </div>{/* end scrollable content */}
+
+        {/* Pinned footer */}
+        <div style={{display:"flex", gap:8, padding:"14px 0 20px", borderTop:`1px solid ${BRAND.border}`, flexShrink:0}}>
           {addStep > 1 && <button style={{...btnSecondary, flex:1}} onClick={() => setAddStep(s => s-1)}>← Back</button>}
           {addStep < 3 && <button style={{...btnPrimary, flex:2}} disabled={!stepValid()} onClick={() => setAddStep(s => s+1)}>Continue →</button>}
           {addStep === 3 && <button style={{...btnPrimary, flex:2}} disabled={!newContact.firstName || !newContact.email} onClick={handleSave}>Add contact</button>}
