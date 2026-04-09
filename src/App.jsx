@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from "react";
 import { useContacts } from "./hooks/useContacts";
+import { upsertMailchimpContact, sendMailchimpEmail } from "./lib/mailchimp";
 import { BRAND, STAGES } from "./constants/brand";
 import { EMAIL_TEMPLATES } from "./constants/templates";
 import LogoMark from "./components/LogoMark";
@@ -10,6 +11,7 @@ import DetailPanel from "./components/DetailPanel";
 import EmailModal from "./components/EmailModal";
 import AddModal from "./components/AddModal";
 import ImportModal from "./components/ImportModal";
+import BulkEmailModal from "./components/BulkEmailModal";
 
 export default function CRM() {
   const {
@@ -28,6 +30,8 @@ export default function CRM() {
   const [showAdd, setShowAdd]         = useState(false);
   const [showImport, setShowImport]   = useState(false);
   const [showEmail, setShowEmail]     = useState(false);
+  const [showBulkEmail, setShowBulkEmail] = useState(false);
+  const [checkedIds, setCheckedIds]   = useState(new Set());
   const [emailContact, setEmailContact] = useState(null);
   const [emailDraft, setEmailDraft]   = useState({ subject:"", body:"" });
   const [emailLoading, setEmailLoading] = useState(false);
@@ -54,11 +58,19 @@ export default function CRM() {
   async function updateContact(id, updates) {
     await dbUpdate(id, updates);
     if (selected?.id === id) setSelected(s => ({...s, ...updates}));
+    // Sync name/email changes to Mailchimp in background
+    const syncFields = ["email", "firstName", "lastName"];
+    if (syncFields.some(f => f in updates)) {
+      const contact = contacts.find(c => c.id === id);
+      if (contact?.email) upsertMailchimpContact({...contact, ...updates}).catch(console.error);
+    }
   }
 
   async function addContact(contact) {
     await dbAdd(contact);
     setShowAdd(false);
+    // Sync new contact to Mailchimp audience in background
+    if (contact.email) upsertMailchimpContact(contact).catch(console.error);
   }
 
   async function importContacts(newContacts) {
@@ -68,6 +80,50 @@ export default function CRM() {
   async function deleteContact(id) {
     await dbDelete(id);
     setSelected(null);
+  }
+
+  function toggleCheck(id) {
+    setCheckedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function selectAll(checked) {
+    if (checked) {
+      setCheckedIds(prev => new Set([...prev, ...filtered.map(c => c.id)]));
+    } else {
+      setCheckedIds(new Set());
+    }
+  }
+
+  async function bulkEdit(field, value) {
+    if (!value) return;
+    await Promise.all([...checkedIds].map(id => updateContact(id, { [field]: value })));
+  }
+
+  function toggleJourneyType(jt) {
+    const ofType = contacts.filter(c => c.journeyType === jt);
+    if (!ofType.length) return;
+    const allChecked = ofType.every(c => checkedIds.has(c.id));
+    if (allChecked) {
+      setCheckedIds(prev => { const n = new Set(prev); ofType.forEach(c => n.delete(c.id)); return n; });
+    } else {
+      setCheckedIds(prev => new Set([...prev, ...ofType.map(c => c.id)]));
+    }
+  }
+
+  async function handleSendViaMailchimp(subject, body) {
+    try {
+      const { campaignId } = await sendMailchimpEmail(emailContact, subject, body);
+      const record = { campaignId, subject, sentAt: new Date().toISOString(), opened: false, clicked: false, journeyType: emailContact.journeyType || null };
+      const history = [...(emailContact.emailHistory || []), record];
+      await updateContact(emailContact.id, { emailHistory: history });
+      return { success: true };
+    } catch (err) {
+      return { error: err.message };
+    }
   }
 
   async function generateEmail(c) {
@@ -108,7 +164,7 @@ export default function CRM() {
         .crm-nav-btn:hover { background: rgba(255,255,255,0.1) !important; }
         .crm-icon-btn { transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease; }
         .crm-icon-btn:hover { background: ${BRAND.sandLight} !important; border-color: ${BRAND.sand} !important; }
-        ::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: ${BRAND.border}; border-radius: 99px; }
         ::-webkit-scrollbar-thumb:hover { background: ${BRAND.sand}; }
@@ -155,6 +211,13 @@ export default function CRM() {
             onOpenAdd={() => setShowAdd(true)}
             onOpenImport={() => setShowImport(true)}
             generateEmail={generateEmail}
+            checkedIds={checkedIds}
+            onToggleCheck={toggleCheck}
+            onSelectAll={selectAll}
+            onToggleJourneyType={toggleJourneyType}
+            onBulkEdit={bulkEdit}
+            contacts={contacts}
+            onOpenBulkEmail={() => setShowBulkEmail(true)}
           />
         )}
         {view === "pipeline" && (
@@ -180,6 +243,16 @@ export default function CRM() {
             emailLoading={emailLoading}
             onClose={() => setShowEmail(false)}
             generateEmail={generateEmail}
+            onSendViaMailchimp={handleSendViaMailchimp}
+            onUpdateContact={updates => emailContact && updateContact(emailContact.id, updates)}
+          />
+        )}
+        {showBulkEmail && (
+          <BulkEmailModal
+            selectedContacts={contacts.filter(c => checkedIds.has(c.id))}
+            updateContact={updateContact}
+            onClose={() => setShowBulkEmail(false)}
+            onDone={() => setCheckedIds(new Set())}
           />
         )}
         {showAdd && (

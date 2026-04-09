@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { BRAND, STAGES, STAGE_COLORS, STAGE_BG, SEGMENTS, TIER_COLORS, TIER_BG, ISLANDS } from "../constants/brand";
+import { BRAND, STAGES, STAGE_COLORS, STAGE_BG, SEGMENTS, TIER_COLORS, TIER_BG, ISLANDS, JOURNEY_TYPES, JOURNEY_TYPE_COLORS, JOURNEY_TYPE_BG, JOURNEY_TYPE_DESC } from "../constants/brand";
 import { inputStyle, selectStyle, btnPrimary, btnSecondary, pill, tag, label } from "../constants/styles";
 import PricingCalculator from "./PricingCalculator";
 
 const EMPTY_CONTACT = {
   firstName:"", lastName:"", email:"", phone:"", org:"",
   segment:"Soil Testing Inquiry", tier:"Warm", stage:"Lead",
-  island:"", notes:"", message:"", value:0,
+  island:"", notes:"", message:"", value:0, journeyType:"",
 };
 
 export default function AddModal({ onSave, onClose }) {
@@ -84,6 +84,31 @@ export default function AddModal({ onSave, onClose }) {
         {addStep === 2 && (
           <div>
             <div style={{marginBottom:16}}>
+              <label style={label}>Journey Type</label>
+              <div style={{display:"flex", flexWrap:"wrap", gap:6, marginTop:4}}>
+                {JOURNEY_TYPES.map(jt => {
+                  const active = newContact.journeyType === jt;
+                  return (
+                    <button
+                      key={jt}
+                      onClick={() => setNewContact(n => ({...n, journeyType: active ? "" : jt}))}
+                      style={{
+                        padding:"7px 14px", borderRadius:8, border:"1px solid", fontSize:12, cursor:"pointer",
+                        fontWeight: active ? 500 : 400,
+                        borderColor: active ? JOURNEY_TYPE_COLORS[jt] : BRAND.border,
+                        background:  active ? JOURNEY_TYPE_BG[jt] : BRAND.white,
+                        color:       active ? JOURNEY_TYPE_COLORS[jt] : BRAND.gray,
+                        textAlign:"left",
+                      }}
+                    >
+                      <div style={{fontWeight: active ? 600 : 500, fontSize:13}}>{jt}</div>
+                      <div style={{fontSize:10, opacity:0.8, marginTop:1}}>{JOURNEY_TYPE_DESC[jt]}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div style={{marginBottom:16}}>
               <label style={label}>Segment <span style={{color:BRAND.red}}>*</span></label>
               <div style={{display:"flex", flexWrap:"wrap", gap:7, marginTop:4}}>
                 {SEGMENTS.map(sg => (
@@ -148,6 +173,7 @@ export default function AddModal({ onSave, onClose }) {
                   <span style={pill(TIER_COLORS[newContact.tier], TIER_BG[newContact.tier])}>{newContact.tier}</span>
                   <span style={pill(STAGE_COLORS[newContact.stage], STAGE_BG[newContact.stage])}>{newContact.stage}</span>
                   <span style={tag}>{newContact.segment}</span>
+                  {newContact.journeyType && <span style={pill(JOURNEY_TYPE_COLORS[newContact.journeyType], JOURNEY_TYPE_BG[newContact.journeyType])}>{newContact.journeyType}</span>}
                 </div>
               </div>
             )}

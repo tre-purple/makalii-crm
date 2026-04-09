@@ -52,6 +52,16 @@ export const ISLANDS = ["Oʻahu","Hawaiʻi Island","Maui","Kauaʻi","Molokaʻi",
 
 export const REVENUE_TYPES = ["Contract Project", "Mail-In Testing"];
 
+export const JOURNEY_TYPES = ["Intro", "Follow-Up", "Updates", "Returning"];
+export const JOURNEY_TYPE_COLORS = { Intro: BRAND.gray, "Follow-Up": BRAND.sand, Updates: BRAND.navy, Returning: BRAND.green };
+export const JOURNEY_TYPE_BG     = { Intro: BRAND.grayLight, "Follow-Up": BRAND.sandLight, Updates: BRAND.navyLight, Returning: BRAND.greenLight };
+export const JOURNEY_TYPE_DESC   = {
+  Intro:       "First-touch outreach — introduce Makaliʻi Metrics and offer a clear next step",
+  "Follow-Up": "Nurture outreach — they know us, keep the conversation going",
+  Updates:     "Share news, services, or program updates with engaged contacts",
+  Returning:   "Re-engagement — past relationship or prior work together",
+};
+
 export const QUOTE_STATUSES = ["No Quote Sent","Quote Drafted","Quote Sent","Quote Accepted","Quote Declined"];
 export const QUOTE_STATUS_COLORS = {
   "No Quote Sent":  BRAND.gray,

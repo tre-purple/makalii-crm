@@ -62,6 +62,7 @@ export function useContacts() {
   }
 
   async function updateContact(id, updates) {
+    setContacts(cs => cs.map(c => c.id === id ? { ...c, ...updates } : c));
     const { error } = await supabase.from("contacts").update(updates).eq("id", id);
     if (error) console.error("updateContact:", error.message);
   }

@@ -1,8 +1,11 @@
-import { BRAND, SEGMENTS, STAGES, STAGE_COLORS, TIER_COLORS, TIER_BG } from "../constants/brand";
+import { useState } from "react";
+import { BRAND, SEGMENTS, STAGES, STAGE_COLORS, TIER_COLORS, TIER_BG, JOURNEY_TYPES, JOURNEY_TYPE_COLORS } from "../constants/brand";
 import { pill, card, metricCard, btnSecondary } from "../constants/styles";
 import { fmt$ } from "../utils/helpers";
 
 export default function AnalyticsView({ contacts, onSelectContact, generateEmail }) {
+  const [tab, setTab]             = useState("overview");
+  const [expandedBulk, setExpandedBulk] = useState(null);
   const bySeg = SEGMENTS
     .map(seg => ({ seg, count: contacts.filter(c => c.segment === seg).length }))
     .filter(x => x.count > 0)
@@ -28,8 +31,211 @@ export default function AnalyticsView({ contacts, onSelectContact, generateEmail
   const untypedTotal  = untypedContacts.reduce((s, c) => s + (c.value || 0), 0);
   const totalVal      = contractTotal + mailInTotal + untypedTotal;
 
+  // ── Campaigns tab data ──────────────────────────────────────────────────
+  const allHistory = contacts.flatMap(c =>
+    (c.emailHistory || []).map(h => ({ ...h, contact: c }))
+  );
+  const totalSent   = allHistory.length;
+  const totalOpened = allHistory.filter(h => h.opened).length;
+  const overallRate = totalSent > 0 ? Math.round(totalOpened / totalSent * 100) : 0;
+  const neverEmailed = contacts.filter(c => !(c.emailHistory?.length));
+
+  const openRateBySeg = SEGMENTS.map(seg => {
+    const emails  = allHistory.filter(h => h.contact.segment === seg);
+    const opened  = emails.filter(h => h.opened).length;
+    return { label: seg, total: emails.length, rate: emails.length > 0 ? Math.round(opened / emails.length * 100) : null };
+  }).filter(x => x.total > 0);
+
+  // Group bulk sends by bulkId
+  const bulkGroups = {};
+  contacts.forEach(c => {
+    (c.emailHistory || []).forEach(h => {
+      if (!h.bulkId) return;
+      if (!bulkGroups[h.bulkId]) {
+        bulkGroups[h.bulkId] = { bulkId: h.bulkId, label: h.bulkLabel || h.bulkId, sentAt: h.sentAt, records: [] };
+      }
+      bulkGroups[h.bulkId].records.push({ ...h, contact: c });
+    });
+  });
+  const bulkCampaigns = Object.values(bulkGroups).sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+
+  const openRateByJourney = JOURNEY_TYPES.map(jt => {
+    const emails = allHistory.filter(h => (h.journeyType || h.contact.journeyType) === jt);
+    const opened = emails.filter(h => h.opened).length;
+    return { label: jt, total: emails.length, rate: emails.length > 0 ? Math.round(opened / emails.length * 100) : null, color: JOURNEY_TYPE_COLORS[jt] };
+  }).filter(x => x.total > 0);
+
+  const openRateByStage = STAGES.map(stage => {
+    const emails  = allHistory.filter(h => h.contact.stage === stage);
+    const opened  = emails.filter(h => h.opened).length;
+    return { label: stage, total: emails.length, rate: emails.length > 0 ? Math.round(opened / emails.length * 100) : null };
+  }).filter(x => x.total > 0);
+
   return (
     <div style={{flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:12}}>
+      {/* Tab bar */}
+      <div style={{display:"flex", gap:4, borderBottom:`1px solid ${BRAND.border}`, paddingBottom:0, flexShrink:0}}>
+        {["overview","campaigns"].map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            style={{
+              padding:"7px 16px", border:"none", cursor:"pointer", fontSize:13,
+              borderBottom: tab === t ? `2px solid ${BRAND.navy}` : "2px solid transparent",
+              background:"transparent",
+              color: tab === t ? BRAND.navy : BRAND.gray,
+              fontWeight: tab === t ? 500 : 400,
+              marginBottom:-1,
+            }}
+          >
+            {t.charAt(0).toUpperCase() + t.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {tab === "campaigns" && (
+        <>
+          {/* Summary metric cards */}
+          <div style={{display:"flex", gap:12, flexWrap:"wrap"}}>
+            {[
+              ["Total Sent",   totalSent,     "emails via Mailchimp"],
+              ["Open Rate",    totalSent > 0 ? `${overallRate}%` : "—", "across all campaigns"],
+              ["Not Emailed",  neverEmailed.length, "contacts never contacted"],
+            ].map(([l, v, sub]) => (
+              <div key={l} style={metricCard}>
+                <div style={{fontSize:11, color:BRAND.gray, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:4}}>{l}</div>
+                <div style={{fontSize:24, fontWeight:500, color:BRAND.navy}}>{v}</div>
+                <div style={{fontSize:11, color:BRAND.gray, marginTop:2}}>{sub}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{display:"flex", gap:12, flexWrap:"wrap"}}>
+            {/* Open rate by segment */}
+            <div style={{...card, flex:1, minWidth:220}}>
+              <div style={{fontWeight:500, fontSize:14, color:BRAND.navy, marginBottom:14}}>Open rate by segment</div>
+              {openRateBySeg.length === 0 ? (
+                <div style={{fontSize:12, color:BRAND.gray}}>No emails sent yet.</div>
+              ) : openRateBySeg.map(({ label, total, rate }) => (
+                <div key={label} style={{marginBottom:10}}>
+                  <div style={{display:"flex", justifyContent:"space-between", fontSize:12, marginBottom:3}}>
+                    <span style={{color:BRAND.gray}}>{label}</span>
+                    <span style={{color:BRAND.navy, fontWeight:500}}>{rate != null ? `${rate}%` : "—"} <span style={{color:BRAND.gray, fontWeight:400}}>({total})</span></span>
+                  </div>
+                  <div style={{height:6, borderRadius:3, background:BRAND.sandLight, overflow:"hidden"}}>
+                    <div style={{height:"100%", borderRadius:3, background:BRAND.navy, width:`${rate ?? 0}%`}}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Open rate by journey type */}
+            <div style={{...card, flex:1, minWidth:200}}>
+              <div style={{fontWeight:500, fontSize:14, color:BRAND.navy, marginBottom:14}}>Open rate by journey type</div>
+              {openRateByJourney.length === 0 ? (
+                <div style={{fontSize:12, color:BRAND.gray}}>No emails sent yet.</div>
+              ) : openRateByJourney.map(({ label, total, rate, color }) => (
+                <div key={label} style={{marginBottom:10}}>
+                  <div style={{display:"flex", justifyContent:"space-between", fontSize:12, marginBottom:3}}>
+                    <span style={{color:BRAND.gray}}>{label}</span>
+                    <span style={{color, fontWeight:500}}>{rate != null ? `${rate}%` : "—"} <span style={{color:BRAND.gray, fontWeight:400}}>({total})</span></span>
+                  </div>
+                  <div style={{height:6, borderRadius:3, background:BRAND.sandLight, overflow:"hidden"}}>
+                    <div style={{height:"100%", borderRadius:3, background:color, width:`${rate ?? 0}%`}}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Open rate by pipeline stage */}
+            <div style={{...card, flex:1, minWidth:200}}>
+              <div style={{fontWeight:500, fontSize:14, color:BRAND.navy, marginBottom:14}}>Open rate by pipeline stage</div>
+              {openRateByStage.length === 0 ? (
+                <div style={{fontSize:12, color:BRAND.gray}}>No emails sent yet.</div>
+              ) : openRateByStage.map(({ label, total, rate }) => (
+                <div key={label} style={{marginBottom:10}}>
+                  <div style={{display:"flex", justifyContent:"space-between", fontSize:12, marginBottom:3}}>
+                    <span style={{color:BRAND.gray}}>{label}</span>
+                    <span style={{color:STAGE_COLORS[label] || BRAND.navy, fontWeight:500}}>{rate != null ? `${rate}%` : "—"} <span style={{color:BRAND.gray, fontWeight:400}}>({total})</span></span>
+                  </div>
+                  <div style={{height:6, borderRadius:3, background:BRAND.sandLight, overflow:"hidden"}}>
+                    <div style={{height:"100%", borderRadius:3, background:STAGE_COLORS[label] || BRAND.navy, width:`${rate ?? 0}%`}}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Bulk campaigns */}
+          {bulkCampaigns.length > 0 && (
+            <div style={card}>
+              <div style={{fontWeight:500, fontSize:14, color:BRAND.navy, marginBottom:12}}>Bulk Campaigns</div>
+              {bulkCampaigns.map(group => {
+                const openedCount = group.records.filter(r => r.opened).length;
+                const openRate    = group.records.length > 0 ? Math.round(openedCount / group.records.length * 100) : 0;
+                const isExpanded  = expandedBulk === group.bulkId;
+                return (
+                  <div key={group.bulkId} style={{borderBottom:`1px solid ${BRAND.border}`, paddingBottom:10, marginBottom:10}}>
+                    <div style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+                      <div>
+                        <div style={{fontSize:13, fontWeight:500, color:BRAND.navy}}>{group.label}</div>
+                        <div style={{fontSize:12, color:BRAND.gray, marginTop:2}}>
+                          {group.records.length} recipients · {openRate}% open rate · {new Date(group.sentAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <button
+                        style={{...btnSecondary, padding:"3px 10px", fontSize:12}}
+                        onClick={() => setExpandedBulk(isExpanded ? null : group.bulkId)}
+                      >
+                        {isExpanded ? "▲" : "▼"}
+                      </button>
+                    </div>
+                    {isExpanded && (
+                      <div style={{marginTop:10}}>
+                        {group.records.map((r, i) => (
+                          <div key={r.campaignId || i} style={{display:"flex", justifyContent:"space-between", fontSize:12, padding:"5px 0", borderBottom:`1px solid ${BRAND.border}`}}>
+                            <span style={{color:BRAND.navy}}>{r.contact.firstName} {r.contact.lastName} <span style={{color:BRAND.gray}}>· {r.contact.org}</span></span>
+                            <span style={{display:"flex", gap:10}}>
+                              <span style={{color: r.opened ? BRAND.green : BRAND.gray}}>{r.opened ? "✓ Opened" : "Not opened"}</span>
+                              <span style={{color: r.clicked ? BRAND.green : BRAND.gray}}>{r.clicked ? "✓ Clicked" : "No clicks"}</span>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Contacts never emailed */}
+          <div style={card}>
+            <div style={{fontWeight:500, fontSize:14, color:BRAND.navy, marginBottom:12}}>
+              Contacts never emailed ({neverEmailed.length})
+            </div>
+            {neverEmailed.length === 0 ? (
+              <div style={{fontSize:12, color:BRAND.gray}}>All contacts have been emailed.</div>
+            ) : (
+              neverEmailed.map(c => (
+                <div key={c.id} style={{display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderBottom:`1px solid ${BRAND.border}`}}>
+                  <div>
+                    <span style={{fontSize:13, fontWeight:500, color:BRAND.navy}}>{c.firstName} {c.lastName}</span>
+                    <span style={{fontSize:12, color:BRAND.gray, marginLeft:8}}>{c.org}</span>
+                  </div>
+                  <div style={{display:"flex", gap:6}}>
+                    <span style={pill(TIER_COLORS[c.tier], TIER_BG[c.tier])}>{c.tier}</span>
+                    <button style={{...btnSecondary, fontSize:12}} onClick={() => onSelectContact(c)}>View</button>
+                    <button style={{...btnSecondary, fontSize:12, color:BRAND.sand, borderColor:BRAND.sandMid}} onClick={() => generateEmail(c)}>✉ Draft</button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
+
+      {tab === "overview" && <>
       <div style={{display:"flex", gap:12, flexWrap:"wrap"}}>
         {[
           ["Total Contacts",  contacts.length,                                                        "inquiries logged"],
@@ -131,6 +337,7 @@ export default function AnalyticsView({ contacts, onSelectContact, generateEmail
           ))
         )}
       </div>
+      </>}
     </div>
   );
 }

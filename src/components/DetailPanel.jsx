@@ -1,16 +1,36 @@
 import { useState, useEffect } from "react";
-import { BRAND, STAGES, TIER_COLORS, TIER_BG, STAGE_COLORS, STAGE_BG, REVENUE_TYPES, QUOTE_STATUSES, QUOTE_STATUS_COLORS, QUOTE_STATUS_BG } from "../constants/brand";
+import { BRAND, STAGES, TIER_COLORS, TIER_BG, STAGE_COLORS, STAGE_BG, REVENUE_TYPES, QUOTE_STATUSES, QUOTE_STATUS_COLORS, QUOTE_STATUS_BG, JOURNEY_TYPES, JOURNEY_TYPE_COLORS, JOURNEY_TYPE_BG, JOURNEY_TYPE_DESC } from "../constants/brand";
 import { inputStyle, selectStyle, btnPrimary, btnSecondary, pill, tag, label } from "../constants/styles";
 import { initials, avatarColor, fmt$ } from "../utils/helpers";
 import PricingCalculator from "./PricingCalculator";
+import { getContactEmailStats } from "../lib/mailchimp";
 
 export default function DetailPanel({ c, onClose, updateContact, generateEmail, deleteContact }) {
   const [note, setNote] = useState("");
   const [showCalc, setShowCalc] = useState(false);
   const [scopeNotes, setScopeNotes] = useState(c.scopeNotes || "");
+  const [statsLoading, setStatsLoading] = useState(false);
 
   useEffect(() => {
     setScopeNotes(c.scopeNotes || "");
+  }, [c.id]);
+
+  // Refresh open/click stats from Mailchimp when this contact is viewed
+  useEffect(() => {
+    const history = c.emailHistory || [];
+    const ids = history.map(r => r.campaignId).filter(Boolean);
+    if (!ids.length) return;
+    setStatsLoading(true);
+    getContactEmailStats(c, ids)
+      .then(({ stats }) => {
+        if (!stats) return;
+        const updated = history.map(r => ({ ...r, ...(stats[r.campaignId] || {}) }));
+        const changed = updated.some((r, i) => r.opened !== history[i].opened || r.clicked !== history[i].clicked);
+        if (changed) updateContact(c.id, { emailHistory: updated });
+      })
+      .catch(() => {})
+      .finally(() => setStatsLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [c.id]);
 
   const isContract = c.revenueType === "Contract Project";
@@ -60,6 +80,35 @@ export default function DetailPanel({ c, onClose, updateContact, generateEmail, 
             <span style={{color:BRAND.black, maxWidth:190, textAlign:"right", wordBreak:"break-word"}}>{v}</span>
           </div>
         ))}
+      </div>
+
+      {/* Journey Type selector */}
+      <div style={{marginBottom:12}}>
+        <div style={label}>Journey Type</div>
+        <div style={{display:"flex", gap:5, flexWrap:"wrap", marginTop:4}}>
+          {JOURNEY_TYPES.map(jt => {
+            const active = c.journeyType === jt;
+            return (
+              <button
+                key={jt}
+                onClick={() => updateContact(c.id, { journeyType: active ? null : jt })}
+                title={JOURNEY_TYPE_DESC[jt]}
+                style={{
+                  padding:"4px 12px", borderRadius:99, border:"1px solid", fontSize:12, cursor:"pointer",
+                  fontWeight: active ? 500 : 400,
+                  borderColor: active ? JOURNEY_TYPE_COLORS[jt] : BRAND.border,
+                  background:  active ? JOURNEY_TYPE_BG[jt] : BRAND.white,
+                  color:       active ? JOURNEY_TYPE_COLORS[jt] : BRAND.gray,
+                }}
+              >
+                {jt}
+              </button>
+            );
+          })}
+        </div>
+        {c.journeyType && (
+          <div style={{fontSize:11, color:BRAND.gray, marginTop:4}}>{JOURNEY_TYPE_DESC[c.journeyType]}</div>
+        )}
       </div>
 
       {/* Revenue Type toggle */}
@@ -273,6 +322,32 @@ export default function DetailPanel({ c, onClose, updateContact, generateEmail, 
               />
             </div>
           )}
+        </div>
+      )}
+
+      {/* Email History */}
+      {(c.emailHistory?.length > 0) && (
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:11, color:BRAND.gray, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:6, display:"flex", alignItems:"center", gap:6}}>
+            Email History
+            {statsLoading && <span style={{fontSize:10, color:BRAND.sand}}>refreshing…</span>}
+          </div>
+          {c.emailHistory.map((record, i) => (
+            <div key={record.campaignId || i} style={{fontSize:12, padding:"8px 10px", borderRadius:6, background:BRAND.grayLight, marginBottom:5, border:`1px solid ${BRAND.border}`}}>
+              <div style={{display:"flex", justifyContent:"space-between", marginBottom:3}}>
+                <span style={{color:BRAND.navy, fontWeight:500, maxWidth:200, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{record.subject}</span>
+                <span style={{color:BRAND.gray, flexShrink:0}}>{record.sentAt ? new Date(record.sentAt).toLocaleDateString() : "—"}</span>
+              </div>
+              <div style={{display:"flex", gap:10, color:BRAND.gray}}>
+                <span style={{color: record.opened ? BRAND.green : BRAND.gray}}>
+                  {record.opened ? "✓ Opened" : "Not opened"}
+                </span>
+                <span style={{color: record.clicked ? BRAND.green : BRAND.gray}}>
+                  {record.clicked ? "✓ Clicked" : "No clicks"}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
