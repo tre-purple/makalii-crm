@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.js": "/makalii-crm/static/js/main.06cbb2ae.js",
+    "main.js": "/makalii-crm/static/js/main.4b516e51.js",
     "index.html": "/makalii-crm/index.html",
-    "main.06cbb2ae.js.map": "/makalii-crm/static/js/main.06cbb2ae.js.map"
+    "main.4b516e51.js.map": "/makalii-crm/static/js/main.4b516e51.js.map"
   },
   "entrypoints": [
-    "static/js/main.06cbb2ae.js"
+    "static/js/main.4b516e51.js"
   ]
 }
