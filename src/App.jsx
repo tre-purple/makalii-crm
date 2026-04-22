@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useContacts } from "./hooks/useContacts";
 import { upsertMailchimpContact, sendMailchimpEmail } from "./lib/mailchimp";
 import { BRAND, STAGES } from "./constants/brand";
@@ -12,6 +12,8 @@ import EmailModal from "./components/EmailModal";
 import AddModal from "./components/AddModal";
 import ImportModal from "./components/ImportModal";
 import BulkEmailModal from "./components/BulkEmailModal";
+import IntakeForm from "./components/IntakeForm";
+import IntakeQueue from "./components/IntakeQueue";
 
 export default function CRM() {
   const {
@@ -36,12 +38,22 @@ export default function CRM() {
   const [emailDraft, setEmailDraft]   = useState({ subject:"", body:"" });
   const [emailLoading, setEmailLoading] = useState(false);
 
+  const [hash, setHash] = useState(window.location.hash);
+  useEffect(() => {
+    const handler = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", handler);
+    return () => window.removeEventListener("hashchange", handler);
+  }, []);
+
+  const pendingCount = useMemo(() => contacts.filter(c => c.pending).length, [contacts]);
+
   // Persists last-selected contact so content stays visible during slide-out animation
   const lastSelectedRef = useRef(null);
   if (selected) lastSelectedRef.current = selected;
   const panelContact = selected || lastSelectedRef.current;
 
   const filtered = useMemo(() => contacts.filter(c => {
+    if (c.pending) return false;
     const q = search.toLowerCase();
     const name = (c.firstName + " " + c.lastName).toLowerCase();
     const matchQ = !q || name.includes(q) || c.org.toLowerCase().includes(q) || c.segment.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
@@ -51,7 +63,7 @@ export default function CRM() {
   const pipelineByStage = useMemo(() => {
     const m = {};
     STAGES.forEach(s => m[s] = []);
-    contacts.forEach(c => { if (m[c.stage]) m[c.stage].push(c); });
+    contacts.filter(c => !c.pending).forEach(c => { if (m[c.stage]) m[c.stage].push(c); });
     return m;
   }, [contacts]);
 
@@ -154,6 +166,8 @@ export default function CRM() {
     setEmailLoading(false);
   }
 
+  if (hash === "#intake") return <IntakeForm />;
+
   return (
     <div style={{fontFamily:"system-ui,sans-serif", height:"100vh", overflow:"hidden", background:BRAND.grayLight, display:"flex", flexDirection:"column"}}>
       <style>{`
@@ -187,9 +201,21 @@ export default function CRM() {
               {v.charAt(0).toUpperCase() + v.slice(1)}
             </button>
           ))}
+          <button
+            className="crm-nav-btn"
+            style={{padding:"6px 14px", borderRadius:6, border:"none", background:view==="intake"?"rgba(255,255,255,0.12)":"transparent", color:view==="intake"?BRAND.white:BRAND.sand, cursor:"pointer", fontSize:13, fontWeight:view==="intake"?500:400, letterSpacing:"0.01em", display:"flex", alignItems:"center", gap:6}}
+            onClick={() => setView("intake")}
+          >
+            Intake
+            {pendingCount > 0 && (
+              <span style={{background:BRAND.amber, color:BRAND.white, borderRadius:99, fontSize:10, fontWeight:700, padding:"1px 6px", lineHeight:"16px"}}>
+                {pendingCount}
+              </span>
+            )}
+          </button>
         </nav>
         <div style={{marginLeft:"auto", fontSize:12, color:BRAND.sand}}>
-          {loading ? "Loading…" : `${contacts.length} contacts · ${contacts.filter(c => c.tier === "Hot").length} hot leads`}
+          {loading ? "Loading…" : `${contacts.filter(c => !c.pending).length} contacts · ${contacts.filter(c => c.tier === "Hot" && !c.pending).length} hot leads`}
         </div>
       </div>
 
@@ -232,6 +258,16 @@ export default function CRM() {
             onSelectContact={setSelected}
             generateEmail={generateEmail}
           />
+        )}
+        {view === "intake" && (
+          <div style={{height:"100%", overflowY:"auto"}}>
+            <IntakeQueue
+              onApprove={approvedContact => {
+                setView("contacts");
+                setSelected(approvedContact);
+              }}
+            />
+          </div>
         )}
 
         {/* Modals */}

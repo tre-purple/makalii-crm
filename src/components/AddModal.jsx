@@ -50,11 +50,11 @@ export default function AddModal({ onSave, onClose }) {
             <div style={{display:"flex", gap:12, marginBottom:14}}>
               <div style={{flex:1}}>
                 <label style={label}>First name <span style={{color:BRAND.red}}>*</span></label>
-                <input autoFocus value={newContact.firstName} onChange={e => setNewContact(n => ({...n, firstName:e.target.value}))} placeholder="e.g. Kainoa" style={inputStyle}/>
+                <input autoFocus value={newContact.firstName} onChange={e => setNewContact(n => ({...n, firstName:e.target.value}))} placeholder="e.g. Daniel" style={inputStyle}/>
               </div>
               <div style={{flex:1}}>
                 <label style={label}>Last name</label>
-                <input value={newContact.lastName} onChange={e => setNewContact(n => ({...n, lastName:e.target.value}))} placeholder="e.g. Kahananui" style={inputStyle}/>
+                <input value={newContact.lastName} onChange={e => setNewContact(n => ({...n, lastName:e.target.value}))} placeholder="e.g. Richardson" style={inputStyle}/>
               </div>
             </div>
             <div style={{marginBottom:14}}>
