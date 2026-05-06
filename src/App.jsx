@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useContacts } from "./hooks/useContacts";
-import { upsertMailchimpContact, sendMailchimpEmail } from "./lib/mailchimp";
+import { upsertMailchimpContact, sendMailchimpEmail, getContactEmailStats } from "./lib/mailchimp";
 import { BRAND, STAGES } from "./constants/brand";
 import { EMAIL_TEMPLATES } from "./constants/templates";
 import LogoMark from "./components/LogoMark";
@@ -14,6 +14,9 @@ import ImportModal from "./components/ImportModal";
 import BulkEmailModal from "./components/BulkEmailModal";
 import IntakeForm from "./components/IntakeForm";
 import IntakeQueue from "./components/IntakeQueue";
+import CampaignTracker from "./components/CampaignTracker";
+import FollowUpQueue from "./components/FollowUpQueue";
+import { getFollowUpQueue, daysSince } from "./utils/followups";
 
 export default function CRM() {
   const {
@@ -37,6 +40,8 @@ export default function CRM() {
   const [emailContact, setEmailContact] = useState(null);
   const [emailDraft, setEmailDraft]   = useState({ subject:"", body:"" });
   const [emailLoading, setEmailLoading] = useState(false);
+  const [followUpEntry, setFollowUpEntry] = useState(null);
+  const [emailSubView, setEmailSubView] = useState("campaigns");
 
   const [hash, setHash] = useState(window.location.hash);
   useEffect(() => {
@@ -45,7 +50,38 @@ export default function CRM() {
     return () => window.removeEventListener("hashchange", handler);
   }, []);
 
-  const pendingCount = useMemo(() => contacts.filter(c => c.pending).length, [contacts]);
+  const pendingCount  = useMemo(() => contacts.filter(c => c.pending).length, [contacts]);
+  const followUpCount = useMemo(() => getFollowUpQueue(contacts.filter(c => !c.pending)).length, [contacts]);
+
+  // On load, refresh Mailchimp open/click stats for contacts with recent unopened emails
+  const statsRefreshedRef = useRef(false);
+  useEffect(() => {
+    if (loading || contacts.length === 0 || statsRefreshedRef.current) return;
+    statsRefreshedRef.current = true;
+    const cutoff = Date.now() - 60 * 24 * 60 * 60 * 1000;
+    const toRefresh = contacts.filter(c =>
+      !c.pending &&
+      (c.emailHistory || []).some(e => !e.opened && e.campaignId && new Date(e.sentAt) > cutoff)
+    );
+    if (!toRefresh.length) return;
+    (async () => {
+      for (let i = 0; i < toRefresh.length; i += 5) {
+        await Promise.all(toRefresh.slice(i, i + 5).map(async contact => {
+          const history = contact.emailHistory || [];
+          const ids = history.filter(e => !e.opened && e.campaignId).map(e => e.campaignId);
+          if (!ids.length) return;
+          try {
+            const { stats } = await getContactEmailStats(contact, ids);
+            if (!stats) return;
+            const updated = history.map(r => ({ ...r, ...(stats[r.campaignId] || {}) }));
+            const changed = updated.some((r, i) => r.opened !== history[i].opened || r.clicked !== history[i].clicked);
+            if (changed) await dbUpdate(contact.id, { emailHistory: updated });
+          } catch (_) {}
+        }));
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, contacts.length]);
 
   // Persists last-selected contact so content stays visible during slide-out animation
   const lastSelectedRef = useRef(null);
@@ -129,8 +165,16 @@ export default function CRM() {
   async function handleSendViaMailchimp(subject, body) {
     try {
       const { campaignId } = await sendMailchimpEmail(emailContact, subject, body);
-      const record = { campaignId, subject, sentAt: new Date().toISOString(), opened: false, clicked: false, journeyType: emailContact.journeyType || null };
-      const history = [...(emailContact.emailHistory || []), record];
+      const sentAt = new Date().toISOString();
+      const record = { campaignId, subject, sentAt, opened: false, clicked: false, journeyType: emailContact.journeyType || null };
+      let history = [...(emailContact.emailHistory || []), record];
+      // If this was a follow-up send, stamp the original entry so it leaves the queue
+      if (followUpEntry) {
+        history = history.map(e =>
+          e.campaignId === followUpEntry.campaignId ? { ...e, followUpSentAt: sentAt } : e
+        );
+        setFollowUpEntry(null);
+      }
       await updateContact(emailContact.id, { emailHistory: history });
       return { success: true };
     } catch (err) {
@@ -163,6 +207,42 @@ export default function CRM() {
       const aiBody = data.content?.find(b => b.type === "text")?.text || baseBody;
       setEmailDraft({ subject, body: aiBody });
     } catch (e) {}
+    setEmailLoading(false);
+  }
+
+  async function deleteCampaign(campaign) {
+    await Promise.all(campaign.recipients.map(({ contact, entry }) => {
+      const history = (contact.emailHistory || []).filter(e =>
+        campaign.isBulk ? e.bulkId !== campaign.key : e.campaignId !== campaign.key
+      );
+      return updateContact(contact.id, { emailHistory: history });
+    }));
+  }
+
+  async function generateFollowUpEmail(contact, originalEntry) {
+    setFollowUpEntry(originalEntry);
+    setEmailContact(contact);
+    setEmailLoading(true);
+    setShowEmail(true);
+    const subject = `Following up: ${originalEntry.subject}`;
+    setEmailDraft({ subject, body: "" });
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 600,
+          messages: [{
+            role: "user",
+            content: `You are writing on behalf of Daniel Richardson at Makaliʻi Metrics, Hawaiʻi's first locally-staffed commercial soil testing lab.\n\nWrite a brief, warm follow-up email to ${contact.firstName} ${contact.lastName} from ${contact.org}. We sent them an email ${daysSince(originalEntry.sentAt)} days ago with subject "${originalEntry.subject}" and haven't heard back.\n\nThis follow-up should:\n- Be concise (under 100 words)\n- Not feel pushy — just a gentle check-in\n- Invite them to respond or ask if they have any questions\n- Feel grounded in aloha ʻāina values\n- Sign off as Daniel Richardson, Makaliʻi Metrics\n\nReturn only the email body, no subject line.`,
+          }],
+        }),
+      });
+      const data = await res.json();
+      const aiBody = data.content?.find(b => b.type === "text")?.text || "";
+      setEmailDraft({ subject, body: aiBody });
+    } catch (_) {}
     setEmailLoading(false);
   }
 
@@ -201,6 +281,18 @@ export default function CRM() {
               {v.charAt(0).toUpperCase() + v.slice(1)}
             </button>
           ))}
+          <button
+            className="crm-nav-btn"
+            style={{padding:"6px 14px", borderRadius:6, border:"none", background:view==="emails"?"rgba(255,255,255,0.12)":"transparent", color:view==="emails"?BRAND.white:BRAND.sand, cursor:"pointer", fontSize:13, fontWeight:view==="emails"?500:400, letterSpacing:"0.01em", display:"flex", alignItems:"center", gap:6}}
+            onClick={() => setView("emails")}
+          >
+            Emails
+            {followUpCount > 0 && (
+              <span style={{background:BRAND.amber, color:BRAND.white, borderRadius:99, fontSize:10, fontWeight:700, padding:"1px 6px", lineHeight:"16px"}}>
+                {followUpCount}
+              </span>
+            )}
+          </button>
           <button
             className="crm-nav-btn"
             style={{padding:"6px 14px", borderRadius:6, border:"none", background:view==="intake"?"rgba(255,255,255,0.12)":"transparent", color:view==="intake"?BRAND.white:BRAND.sand, cursor:"pointer", fontSize:13, fontWeight:view==="intake"?500:400, letterSpacing:"0.01em", display:"flex", alignItems:"center", gap:6}}
@@ -259,6 +351,50 @@ export default function CRM() {
             generateEmail={generateEmail}
           />
         )}
+        {view === "emails" && (
+          <div style={{height:"100%", display:"flex", flexDirection:"column", gap:0}}>
+            {/* Sub-tab toggle */}
+            <div style={{display:"flex", gap:6, marginBottom:14, flexShrink:0}}>
+              {[["campaigns","Sent Campaigns"],["followups","Follow-up Queue"]].map(([key, lbl]) => (
+                <button
+                  key={key}
+                  onClick={() => setEmailSubView(key)}
+                  style={{
+                    padding:"6px 16px", borderRadius:99, border:"1px solid",
+                    fontSize:12, cursor:"pointer", fontWeight: emailSubView===key ? 500 : 400,
+                    borderColor: emailSubView===key ? BRAND.navy : BRAND.border,
+                    background:  emailSubView===key ? BRAND.navy : BRAND.white,
+                    color:       emailSubView===key ? BRAND.white : BRAND.gray,
+                    display:"flex", alignItems:"center", gap:6,
+                  }}
+                >
+                  {lbl}
+                  {key === "followups" && followUpCount > 0 && (
+                    <span style={{background:BRAND.amber, color:BRAND.white, borderRadius:99, fontSize:10, fontWeight:700, padding:"1px 6px", lineHeight:"16px"}}>
+                      {followUpCount}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+            <div style={{flex:1, overflowY:"auto"}}>
+              {emailSubView === "campaigns" && (
+                <CampaignTracker
+                  contacts={contacts}
+                  onSelectContact={setSelected}
+                  onDeleteCampaign={deleteCampaign}
+                />
+              )}
+              {emailSubView === "followups" && (
+                <FollowUpQueue
+                  contacts={contacts}
+                  updateContact={updateContact}
+                  onGenerateFollowUp={generateFollowUpEmail}
+                />
+              )}
+            </div>
+          </div>
+        )}
         {view === "intake" && (
           <div style={{height:"100%", overflowY:"auto"}}>
             <IntakeQueue
@@ -315,31 +451,34 @@ export default function CRM() {
           opacity: selected ? 1 : 0,
           pointerEvents: selected ? "auto" : "none",
           transition:"opacity 0.25s ease",
-          zIndex:40,
+          zIndex:8,
         }}
       />
 
-      {/* Slide-in detail panel */}
+      {/* Slide-in detail panel — starts at top:0 so it sits flush behind the nav, spacer pushes content down */}
       <div style={{
-        position:"fixed", top:52, right:0, bottom:0,
-        width:"max(320px, 25vw)",
+        position:"fixed", top:0, right:0, bottom:0,
+        width:"max(500px, 38vw)",
         background:BRAND.white,
         borderLeft:`1px solid ${BRAND.border}`,
         boxShadow:"-8px 0 32px rgba(0,0,0,0.1)",
         transform: selected ? "translateX(0)" : "translateX(105%)",
         transition:"transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-        zIndex:41,
-        overflowY:"auto",
+        zIndex:9,
+        display:"flex", flexDirection:"column",
       }}>
-        {panelContact && (
-          <DetailPanel
-            c={panelContact}
-            onClose={() => setSelected(null)}
-            updateContact={updateContact}
-            generateEmail={generateEmail}
-            deleteContact={deleteContact}
-          />
-        )}
+        <div style={{height:52, flexShrink:0}} />
+        <div style={{flex:1, overflowY:"auto"}}>
+          {panelContact && (
+            <DetailPanel
+              c={panelContact}
+              onClose={() => setSelected(null)}
+              updateContact={updateContact}
+              generateEmail={generateEmail}
+              deleteContact={deleteContact}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

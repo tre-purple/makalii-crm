@@ -72,7 +72,7 @@ export default function AnalyticsView({ contacts, onSelectContact, generateEmail
   }).filter(x => x.total > 0);
 
   return (
-    <div style={{flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:12}}>
+    <div style={{height:"100%", overflowY:"auto", display:"flex", flexDirection:"column", gap:12}}>
       {/* Tab bar */}
       <div style={{display:"flex", gap:4, borderBottom:`1px solid ${BRAND.border}`, paddingBottom:0, flexShrink:0}}>
         {["overview","campaigns"].map(t => (
