@@ -2,7 +2,7 @@
   "name": "makalii-crm",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://tre-purple.github.io/makalii-crm",
+  "homepage": ".",
   "dependencies": {
     "@supabase/supabase-js": "^2.100.1",
     "@testing-library/dom": "^10.4.1",

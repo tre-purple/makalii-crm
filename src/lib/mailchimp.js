@@ -50,8 +50,6 @@ export async function sendMailchimpEmail(contact, subject, body) {
  * Returns { campaignId, campaignName, dashboardUrl }.
  */
 export async function bulkSendMailchimp(contacts, subject, body, campaignTitle) {
-  // Replace {firstName} placeholder with Mailchimp's merge tag so each recipient
-  // gets their own first name inserted by Mailchimp at send time.
   const mergedBody = body.replace(/\{firstName\}/g, "*|FNAME|*");
   return callMailchimp("bulkSend", {
     contacts: contacts.map(c => ({

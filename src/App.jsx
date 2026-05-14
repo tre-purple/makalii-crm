@@ -1,9 +1,11 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useContacts } from "./hooks/useContacts";
+import { useAuth } from "./hooks/useAuth";
 import { upsertMailchimpContact, sendMailchimpEmail, getContactEmailStats } from "./lib/mailchimp";
 import { BRAND, STAGES } from "./constants/brand";
 import { EMAIL_TEMPLATES } from "./constants/templates";
 import LogoMark from "./components/LogoMark";
+import LoginScreen from "./components/LoginScreen";
 import ContactList from "./components/ContactList";
 import PipelineView from "./components/PipelineView";
 import AnalyticsView from "./components/AnalyticsView";
@@ -19,6 +21,32 @@ import FollowUpQueue from "./components/FollowUpQueue";
 import { getFollowUpQueue, daysSince } from "./utils/followups";
 
 export default function CRM() {
+  const { user, checking, login, logout } = useAuth();
+
+  // Show login screen if not authenticated (intake form is public)
+  const [hash, setHash] = useState(window.location.hash);
+  useEffect(() => {
+    const handler = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", handler);
+    return () => window.removeEventListener("hashchange", handler);
+  }, []);
+
+  if (hash === "#intake") return <IntakeForm />;
+
+  if (checking) {
+    return (
+      <div style={{ minHeight: "100vh", background: BRAND.navy, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ color: BRAND.sand, fontSize: 14, fontFamily: "system-ui, sans-serif" }}>Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) return <LoginScreen onLogin={login} />;
+
+  return <CRMApp user={user} logout={logout} />;
+}
+
+function CRMApp({ user, logout }) {
   const {
     contacts, loading,
     addContact: dbAdd,
@@ -306,8 +334,14 @@ export default function CRM() {
             )}
           </button>
         </nav>
-        <div style={{marginLeft:"auto", fontSize:12, color:BRAND.sand}}>
-          {loading ? "Loading…" : `${contacts.filter(c => !c.pending).length} contacts · ${contacts.filter(c => c.tier === "Hot" && !c.pending).length} hot leads`}
+        <div style={{marginLeft:"auto", fontSize:12, color:BRAND.sand, display:"flex", alignItems:"center", gap:12}}>
+          <span>{loading ? "Loading…" : `${contacts.filter(c => !c.pending).length} contacts · ${contacts.filter(c => c.tier === "Hot" && !c.pending).length} hot leads`}</span>
+          <button
+            onClick={logout}
+            style={{padding:"4px 10px", borderRadius:5, border:`1px solid rgba(255,255,255,0.2)`, background:"transparent", color:BRAND.sand, fontSize:11, cursor:"pointer", fontFamily:"inherit"}}
+          >
+            Sign out
+          </button>
         </div>
       </div>
 
