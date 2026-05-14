@@ -60,7 +60,6 @@ export default function IntakeForm() {
       pending:    true,
       createdOn:  new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
     });
-
     setSaving(false);
     if (err) {
       setError("Something went wrong. Check your connection and try again.");
