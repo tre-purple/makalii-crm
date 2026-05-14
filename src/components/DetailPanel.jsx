@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BRAND, STAGES, TIER_COLORS, TIER_BG, STAGE_COLORS, STAGE_BG, REVENUE_TYPES, QUOTE_STATUSES, QUOTE_STATUS_COLORS, QUOTE_STATUS_BG, JOURNEY_TYPES, JOURNEY_TYPE_COLORS, JOURNEY_TYPE_BG, JOURNEY_TYPE_DESC } from "../constants/brand";
+import { BRAND, STAGES, TIER_COLORS, TIER_BG, STAGE_COLORS, STAGE_BG, REVENUE_TYPES, QUOTE_STATUSES, QUOTE_STATUS_COLORS, QUOTE_STATUS_BG, JOURNEY_TYPES, JOURNEY_TYPE_COLORS, JOURNEY_TYPE_BG, JOURNEY_TYPE_DESC, ISLANDS } from "../constants/brand";
 import { inputStyle, selectStyle, btnPrimary, btnSecondary, pill, tag, label } from "../constants/styles";
 import { initials, avatarColor, fmt$ } from "../utils/helpers";
 import PricingCalculator from "./PricingCalculator";
@@ -10,6 +10,26 @@ export default function DetailPanel({ c, onClose, updateContact, generateEmail, 
   const [showCalc, setShowCalc] = useState(false);
   const [scopeNotes, setScopeNotes] = useState(c.scopeNotes || "");
   const [statsLoading, setStatsLoading] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState({});
+
+  const startEdit = () => {
+    setDraft({
+      firstName: c.firstName || "",
+      lastName:  c.lastName  || "",
+      org:       c.org       || "",
+      email:     c.email     || "",
+      phone:     c.phone     || "",
+      island:    c.island    || "",
+      source:    c.source    || "",
+    });
+    setEditing(true);
+  };
+
+  const saveEdit = () => {
+    updateContact(c.id, draft);
+    setEditing(false);
+  };
 
   useEffect(() => {
     setScopeNotes(c.scopeNotes || "");
@@ -53,8 +73,59 @@ export default function DetailPanel({ c, onClose, updateContact, generateEmail, 
             <div style={{fontSize:12, color:BRAND.gray, marginTop:1}}>{c.org}</div>
           </div>
         </div>
-        <button onClick={onClose} style={{...btnSecondary, padding:"3px 9px", fontSize:12}}>✕</button>
+        <div style={{display:"flex", gap:5}}>
+          {!editing && (
+            <button onClick={startEdit} style={{...btnSecondary, padding:"3px 9px", fontSize:12}}>Edit</button>
+          )}
+          <button onClick={onClose} style={{...btnSecondary, padding:"3px 9px", fontSize:12}}>✕</button>
+        </div>
       </div>
+
+      {/* Edit form */}
+      {editing && (
+        <div style={{background:BRAND.sandLight, borderRadius:8, padding:"12px 14px", marginBottom:14, border:`1px solid ${BRAND.border}`}}>
+          <div style={{fontSize:11, fontWeight:500, color:BRAND.navy, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:10}}>Edit Contact</div>
+          <div style={{display:"flex", gap:8, marginBottom:8}}>
+            <div style={{flex:1}}>
+              <div style={label}>First Name</div>
+              <input value={draft.firstName} onChange={e => setDraft(d => ({...d, firstName: e.target.value}))} style={inputStyle} />
+            </div>
+            <div style={{flex:1}}>
+              <div style={label}>Last Name</div>
+              <input value={draft.lastName} onChange={e => setDraft(d => ({...d, lastName: e.target.value}))} style={inputStyle} />
+            </div>
+          </div>
+          <div style={{marginBottom:8}}>
+            <div style={label}>Organization</div>
+            <input value={draft.org} onChange={e => setDraft(d => ({...d, org: e.target.value}))} style={inputStyle} />
+          </div>
+          <div style={{marginBottom:8}}>
+            <div style={label}>Email</div>
+            <input type="email" value={draft.email} onChange={e => setDraft(d => ({...d, email: e.target.value}))} style={inputStyle} />
+          </div>
+          <div style={{marginBottom:8}}>
+            <div style={label}>Phone</div>
+            <input type="tel" value={draft.phone} onChange={e => setDraft(d => ({...d, phone: e.target.value}))} style={inputStyle} />
+          </div>
+          <div style={{display:"flex", gap:8, marginBottom:12}}>
+            <div style={{flex:1}}>
+              <div style={label}>Island</div>
+              <select value={draft.island} onChange={e => setDraft(d => ({...d, island: e.target.value}))} style={{...selectStyle, width:"100%"}}>
+                <option value="">—</option>
+                {ISLANDS.map(i => <option key={i}>{i}</option>)}
+              </select>
+            </div>
+            <div style={{flex:1}}>
+              <div style={label}>Source</div>
+              <input value={draft.source} onChange={e => setDraft(d => ({...d, source: e.target.value}))} style={inputStyle} />
+            </div>
+          </div>
+          <div style={{display:"flex", gap:6}}>
+            <button onClick={saveEdit} style={{...btnPrimary, flex:1}}>Save</button>
+            <button onClick={() => setEditing(false)} style={{...btnSecondary, flex:1}}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       <div style={{display:"flex", gap:5, flexWrap:"wrap", marginBottom:12}}>
         <span style={pill(TIER_COLORS[c.tier], TIER_BG[c.tier])}>{c.tier}</span>
@@ -77,7 +148,7 @@ export default function DetailPanel({ c, onClose, updateContact, generateEmail, 
         ].map(([k, v]) => (
           <div key={k} style={{display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:7}}>
             <span style={{color:BRAND.gray}}>{k}</span>
-            <span style={{color:BRAND.black, maxWidth:190, textAlign:"right", wordBreak:"break-word"}}>{v}</span>
+            <span style={{color:BRAND.black, textAlign:"right", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"60%"}}>{v}</span>
           </div>
         ))}
       </div>
